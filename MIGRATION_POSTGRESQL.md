@@ -76,9 +76,8 @@ CREATE INDEX idx_types_vehicule_label ON types_vehicule(label);
 CREATE TABLE dossiers (
     id                  UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     numero_ch           VARCHAR(50) NOT NULL UNIQUE,
-    numero_2            VARCHAR(50) DEFAULT '',
-    numero_3            VARCHAR(50) DEFAULT '',
-    numero_4            VARCHAR(50) DEFAULT '',
+    chassis_ch          VARCHAR(100) DEFAULT '',
+    annee               VARCHAR(10) DEFAULT '',
     reference_vehicule  VARCHAR(100) NOT NULL,
     type_vehicule       VARCHAR(100) DEFAULT '',
     client_id           UUID REFERENCES clients(id) ON DELETE SET NULL,
@@ -89,11 +88,7 @@ CREATE TABLE dossiers (
                         )),
     notes               TEXT DEFAULT '',
     date_creation       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    date_modification   TIMESTAMPTZ DEFAULT NOW(),
-    -- Champs dépréciés (rétrocompatibilité import Excel)
-    nom_client          VARCHAR(100) DEFAULT '',
-    prenom_client       VARCHAR(100) DEFAULT '',
-    telephone_client    VARCHAR(30) DEFAULT ''
+    date_modification   TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE INDEX idx_dossiers_statut ON dossiers(statut);
@@ -111,15 +106,16 @@ CREATE TABLE locations (
     date_debut          DATE NOT NULL,
     date_fin            DATE NOT NULL,
     montant_total       BIGINT NOT NULL CHECK (montant_total >= 0),
+    depenses            BIGINT DEFAULT 0,
+    depenses_lignes     JSONB DEFAULT '[]',
     statut              VARCHAR(20) NOT NULL DEFAULT 'En_cours'
                         CHECK (statut IN ('En_cours', 'Terminee', 'Annulee')),
     notes               TEXT DEFAULT '',
     date_creation       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    date_modification   TIMESTAMPTZ DEFAULT NOW(),
-    nom_client          VARCHAR(100) DEFAULT '',
-    prenom_client       VARCHAR(100) DEFAULT '',
-    telephone_client    VARCHAR(30) DEFAULT ''
+    date_modification   TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- depenses_lignes : tableau d'objets [{ "id": "uuid", "libelle": "Carburant", "montant": 50000 }]
 
 CREATE INDEX idx_locations_statut ON locations(statut);
 CREATE INDEX idx_locations_client ON locations(client_id);
@@ -142,7 +138,7 @@ CREATE TABLE factures (
     date_facture        DATE NOT NULL,
     prix_total_ttc      BIGINT NOT NULL CHECK (prix_total_ttc >= 0),
     prix_achat          BIGINT DEFAULT 0,
-    depenses            BIGINT DEFAULT 0,
+    dedouanement        BIGINT DEFAULT 0,
     montant_paye        BIGINT NOT NULL DEFAULT 0 CHECK (montant_paye >= 0),
     montant_restant     BIGINT NOT NULL DEFAULT 0,
     mode_paiement       VARCHAR(20) NOT NULL DEFAULT 'Especes'
@@ -206,7 +202,7 @@ CREATE TABLE entreprise (
     updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-INSERT INTO entreprise (nom) VALUES ('DouanApp Entreprise') ON CONFLICT DO NOTHING;
+INSERT INTO entreprise (nom) VALUES ('Haidara Service Commercial (HSC)') ON CONFLICT DO NOTHING;
 
 -- ════════════════════════════════════════════
 -- Triggers : date_modification / updated_at automatique
@@ -350,7 +346,7 @@ async function migrate() {
     await fetch('/api/migration/clients', { method: 'POST', body: JSON.stringify(c) });
   }
 
-  // 2. Types véhicule (filtrer les objets, ignorer les strings pour migration legacy)
+  // 2. Types véhicule
   const types = Array.isArray(typesVehicule) && typeof typesVehicule[0] === 'object'
     ? typesVehicule
     : typesVehicule.map((label: string, i: number) => ({ id: `tv_${i}`, label }));
@@ -433,12 +429,12 @@ export default async function DossiersPage() {
 |-------------------------|------------------|-------|
 | `Client` | `clients` | Référencé par dossiers, factures, locations |
 | `TypeVehicule` | `types_vehicule` | Libellés pour dossiers/locations |
-| `Dossier` | `dossiers` | `client_id` FK, `nom_client` etc. pour import Excel |
-| `Location` | `locations` | `client_id` FK |
-| `Facture` | `factures` | `client_id` FK, `prix_achat`, `depenses` |
+| `Dossier` | `dossiers` | `numero_ch`, `chassis_ch`, `annee`, `client_id` FK |
+| `Location` | `locations` | `client_id` FK, `depenses`, `depenses_lignes` (JSONB) pour bénéfice |
+| `Facture` | `factures` | `client_id` FK, `prix_achat`, `dedouanement` (prix de vente = `prix_total_ttc`) |
 | `Tranche` | `tranches` | Lié à facture |
 | `Paiement` | `paiements` | `date_creation` pour traçabilité |
-| `EntrepriseInfo` | `entreprise` | Singleton |
+| `EntrepriseInfo` | `entreprise` | Singleton (nom par défaut : HSC) |
 
 ---
 
