@@ -3,9 +3,9 @@ FROM node:lts-alpine AS builder
 
 WORKDIR /app
 
-# Install dependencies (faster with lockfile)
+# Install all dependencies (devDependencies needed for build: Tailwind, PostCSS, etc.)
 COPY package.json package-lock.json* ./
-RUN npm ci --omit=dev
+RUN npm ci
 
 COPY . .
 
