@@ -1,26 +1,104 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+  color-scheme: light dark;
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* Backgrounds */
+  --surface: #f8fafc;
+  --card: #ffffff;
+  --muted: #f8fafc;
+  --emphasis: #f1f5f9;
+
+  /* Text */
+  --ink: #0f172a;
+  --ink-secondary: #475569;
+  --ink-muted: #64748b;
+  --ink-dim: #94a3b8;
+
+  /* Borders — intentionally very subtle */
+  --edge: #e8edf2;
+  --edge-soft: #f1f5f9;
+
+  /* Scrollbar */
+  --scrollbar: #cbd5e1;
+  --scrollbar-hover: #94a3b8;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --surface: #020617;
+    --card: #0f172a;
+    --muted: #0c1322;
+    --emphasis: #1e293b;
+
+    --ink: #f1f5f9;
+    --ink-secondary: #cbd5e1;
+    --ink-muted: #94a3b8;
+    --ink-dim: #64748b;
+
+    --edge: #1e293b;
+    --edge-soft: #151f2e;
+
+    --scrollbar: #334155;
+    --scrollbar-hover: #475569;
   }
 }
 
+@theme inline {
+  --color-surface: var(--surface);
+  --color-card: var(--card);
+  --color-muted: var(--muted);
+  --color-emphasis: var(--emphasis);
+
+  --color-ink: var(--ink);
+  --color-ink-secondary: var(--ink-secondary);
+  --color-ink-muted: var(--ink-muted);
+  --color-ink-dim: var(--ink-dim);
+
+  --color-edge: var(--edge);
+  --color-edge-soft: var(--edge-soft);
+
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--surface);
+  color: var(--ink);
+  font-family: var(--font-sans, system-ui, -apple-system, sans-serif);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-hover);
+}
+
+/* Table hover */
+.table-row-hover:hover {
+  background-color: var(--muted);
+}
+
+/* Print styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}
+
+/* Focus outline reset — focus rings are handled by Tailwind utilities */
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
 }
