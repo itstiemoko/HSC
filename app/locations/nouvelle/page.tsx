@@ -124,12 +124,14 @@ export default function NouvelleLocationPage() {
             {depensesLignes.map((depense) => (
               <div key={depense.id} className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_180px_auto]">
                 <FormInput
+                  name={`depense_libelle_${depense.id}`}
                   label="Libellé"
                   placeholder="Carburant, Frais de route..."
                   value={depense.libelle}
                   onChange={(e) => setDepensesLignes((prev) => prev.map((d) => (d.id === depense.id ? { ...d, libelle: e.target.value } : d)))}
                 />
                 <FormInput
+                  name={`depense_montant_${depense.id}`}
                   label="Montant (FCFA)"
                   type="number"
                   min="0"

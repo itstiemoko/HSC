@@ -20,7 +20,10 @@ import type { Location, StatutLocation } from '@/lib/types';
 import { STATUTS_LOCATION } from '@/lib/types';
 import toast from 'react-hot-toast';
 
-const FIELDS: { name: keyof Omit<Location, 'id' | 'dateCreation' | 'dateModification' | 'clientId' | 'typeCamion' | 'nomClient' | 'prenomClient' | 'telephoneClient'>; label: string; required?: boolean }[] = [
+const FORM_FIELD_NAMES = ['referenceCamion', 'dateDebut', 'dateFin', 'montantTotal'] as const;
+type FormFieldName = (typeof FORM_FIELD_NAMES)[number];
+
+const FIELDS: { name: FormFieldName; label: string; required?: boolean }[] = [
   { name: 'referenceCamion', label: 'Référence camion', required: true },
   { name: 'dateDebut', label: 'Date début', required: true },
   { name: 'dateFin', label: 'Date fin', required: true },
@@ -160,12 +163,14 @@ export default function LocationDetailPage() {
               {depensesLignes.map((depense) => (
                 <div key={depense.id} className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_180px_auto]">
                   <FormInput
+                    name={`depense_libelle_${depense.id}`}
                     label="Libellé"
                     placeholder="Carburant, Frais de route..."
                     value={depense.libelle}
                     onChange={(e) => setDepensesLignes((prev) => prev.map((d) => (d.id === depense.id ? { ...d, libelle: e.target.value } : d)))}
                   />
                   <FormInput
+                    name={`depense_montant_${depense.id}`}
                     label="Montant (FCFA)"
                     type="number"
                     min="0"
