@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import type { InputHTMLAttributes, SelectHTMLAttributes, TextareaHTMLAttributes } from 'react';
 import { cn } from '@/lib/cn';
 
@@ -29,17 +30,19 @@ function ErrorMessage({ message }: { message?: string }) {
 // ── Text Input ──────────────────────────────────────────────
 
 interface FormInputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'name'> {
-  name: string;
+  name?: string;
   label: string;
   error?: string;
   required?: boolean;
 }
 
-export function FormInput({ name, label, error, required, className, ...props }: FormInputProps) {
+export function FormInput({ name, label, error, required, className, id: propsId, ...props }: FormInputProps) {
+  const generatedId = useId();
+  const inputId = propsId ?? name ?? generatedId;
   return (
     <div className={className}>
-      <Label htmlFor={name} required={required}>{label}</Label>
-      <input id={name} name={name} className={inputClass(error)} {...props} />
+      <Label htmlFor={inputId} required={required}>{label}</Label>
+      <input id={inputId} name={name} className={inputClass(error)} {...props} />
       <ErrorMessage message={error} />
     </div>
   );
@@ -48,7 +51,7 @@ export function FormInput({ name, label, error, required, className, ...props }:
 // ── Select ──────────────────────────────────────────────────
 
 interface FormSelectProps extends Omit<SelectHTMLAttributes<HTMLSelectElement>, 'name'> {
-  name: string;
+  name?: string;
   label: string;
   error?: string;
   required?: boolean;
@@ -56,11 +59,13 @@ interface FormSelectProps extends Omit<SelectHTMLAttributes<HTMLSelectElement>, 
   placeholder?: string;
 }
 
-export function FormSelect({ name, label, error, required, options, placeholder, className, ...props }: FormSelectProps) {
+export function FormSelect({ name, label, error, required, options, placeholder, className, id: propsId, ...props }: FormSelectProps) {
+  const generatedId = useId();
+  const selectId = propsId ?? name ?? generatedId;
   return (
     <div className={className}>
-      <Label htmlFor={name} required={required}>{label}</Label>
-      <select id={name} name={name} className={inputClass(error)} {...props}>
+      <Label htmlFor={selectId} required={required}>{label}</Label>
+      <select id={selectId} name={name} className={inputClass(error)} {...props}>
         {placeholder && <option value="">{placeholder}</option>}
         {options.map((o) => (
           <option key={o.value} value={o.value}>{o.label}</option>
@@ -74,17 +79,19 @@ export function FormSelect({ name, label, error, required, options, placeholder,
 // ── Textarea ────────────────────────────────────────────────
 
 interface FormTextareaProps extends Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, 'name'> {
-  name: string;
+  name?: string;
   label: string;
   error?: string;
   required?: boolean;
 }
 
-export function FormTextarea({ name, label, error, required, className, ...props }: FormTextareaProps) {
+export function FormTextarea({ name, label, error, required, className, id: propsId, ...props }: FormTextareaProps) {
+  const generatedId = useId();
+  const textareaId = propsId ?? name ?? generatedId;
   return (
     <div className={className}>
-      <Label htmlFor={name} required={required}>{label}</Label>
-      <textarea id={name} name={name} className={inputClass(error)} {...props} />
+      <Label htmlFor={textareaId} required={required}>{label}</Label>
+      <textarea id={textareaId} name={name} className={inputClass(error)} {...props} />
       <ErrorMessage message={error} />
     </div>
   );
