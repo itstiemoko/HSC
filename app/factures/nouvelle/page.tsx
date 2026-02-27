@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Save, Plus, Trash2 } from 'lucide-react';
 import { getDossiers, getDossierById, saveFacture, getClients } from '@/lib/store';
-import { generateFactureId, generateTrancheId } from '@/lib/utils';
+import { generateFactureId, generateTrancheId, generateId } from '@/lib/utils';
 import { requiredString, positiveNumber, optionalNonNegativeNumber, requiredClientId } from '@/lib/validation';
 import { formatClientLabel, getClientDisplayFromDossier } from '@/lib/clients';
 import useForm from '@/hooks/useForm';
@@ -30,6 +30,9 @@ function NouvelleFactureForm() {
   const [useTranches, setUseTranches] = useState(false);
   const [tranches, setTranches] = useState<TrancheRow[]>([]);
   const [trancheErrors, setTrancheErrors] = useState<Record<string, string>>({});
+  const [depensesLignes, setDepensesLignes] = useState<Array<{ id: string; libelle: string; montant: string }>>([
+    { id: generateId(), libelle: '', montant: '' },
+  ]);
 
   useEffect(() => {
     setDossiers(getDossiers());
@@ -75,10 +78,16 @@ function NouvelleFactureForm() {
       const prixAchat = parseFloat(vals.prixAchat) || 0;
       const dedouanement = parseFloat(vals.dedouanement) || 0;
 
+      const lignesDepenses = depensesLignes
+        .map((d) => ({ id: d.id, libelle: d.libelle.trim(), montant: parseFloat(d.montant) || 0 }))
+        .filter((d) => d.libelle || d.montant > 0);
+      const totalDepenses = lignesDepenses.reduce((sum, d) => sum + d.montant, 0);
+
       saveFacture({
         id: factureId, dossierId: vals.dossierId, clientId: vals.clientId,
         referenceVehicule: selectedDossier.referenceVehicule, typeVehicule: selectedDossier.typeVehicule, vin: selectedDossier.chassisCH ?? '',
         dateFacture: new Date().toISOString(), prixTotalTTC: prix, prixAchat, dedouanement,
+        depenses: totalDepenses, depensesLignes: lignesDepenses,
         montantPaye: 0, montantRestant: prix,
         modePaiement: vals.modePaiement, paysDestination: '',
         statut: 'En_attente', tranches: tranchesData, paiements: [],
@@ -154,6 +163,44 @@ function NouvelleFactureForm() {
             <FormInput label="Dédouanement (FCFA)" type="number" min="0" step="1" placeholder="0" {...form.getFieldProps('dedouanement')} />
             <FormSelect label="Mode de paiement" options={MODES_PAIEMENT} {...form.getFieldProps('modePaiement')} />
           </div>
+        </CardSection>
+
+        <CardSection title="Dépenses">
+          <p className="mb-3 text-xs text-ink-muted">Optionnel : ajoutez des dépenses (ex. frais). Vous pourrez les modifier ou en ajouter sur la facture.</p>
+          {depensesLignes.map((d) => (
+            <div key={d.id} className="mb-3 flex flex-wrap items-end gap-3 rounded-lg bg-muted p-3">
+              <FormInput
+                label="Libellé"
+                placeholder="Frais divers..."
+                value={d.libelle}
+                onChange={(e) => setDepensesLignes((prev) => prev.map((x) => (x.id === d.id ? { ...x, libelle: e.target.value } : x)))}
+              />
+              <FormInput
+                label="Montant (FCFA)"
+                type="number"
+                min="0"
+                step="1"
+                placeholder="0"
+                value={d.montant}
+                onChange={(e) => setDepensesLignes((prev) => prev.map((x) => (x.id === d.id ? { ...x, montant: e.target.value } : x)))}
+              />
+              <button
+                type="button"
+                onClick={() => setDepensesLignes((prev) => (prev.length > 1 ? prev.filter((x) => x.id !== d.id) : prev))}
+                className="rounded p-2 text-ink-dim hover:bg-red-50 hover:text-red-600"
+                title="Supprimer"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={() => setDepensesLignes((prev) => [...prev, { id: generateId(), libelle: '', montant: '' }])}
+            className="inline-flex items-center gap-1 rounded-lg border border-dashed border-edge-soft px-3 py-2 text-sm text-ink-secondary hover:border-blue-300 hover:text-blue-600"
+          >
+            <Plus className="h-4 w-4" /> Ajouter une dépense
+          </button>
         </CardSection>
 
         {/* Tranches */}
