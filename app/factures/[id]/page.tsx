@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
-import { Trash2, FileDown, Printer, CreditCard, CheckCircle2, ArrowRight, Plus } from 'lucide-react';
+import { Trash2, FileDown, Printer, CreditCard, CheckCircle2, ArrowRight, Plus, Edit3 } from 'lucide-react';
 import { getFactureById, saveFacture, deleteFacture, getEntreprise, getDossierById } from '@/lib/store';
 import { generateFacturePDF } from '@/lib/pdf';
 import { exportTranchesToExcel } from '@/lib/excel';
@@ -346,7 +346,17 @@ export default function FactureDetailPage() {
                     {formatMontant(benefice)}
                   </p>
                 </div>
-                <Button variant="ghost" size="sm" onClick={() => { setEditCouts(true); setCoutsForm({ prixAchat: String(prixAchat), dedouanement: String(dedouanement) }); }}>Modifier coûts</Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  icon={<Edit3 className="h-4 w-4" />}
+                  onClick={() => {
+                    setEditCouts(true);
+                    setCoutsForm({ prixAchat: String(prixAchat), dedouanement: String(dedouanement) });
+                  }}
+                >
+                  Modifier coûts
+                </Button>
               </>
             )}
           </div>
