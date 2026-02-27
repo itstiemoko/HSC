@@ -30,6 +30,7 @@ export default function FactureDetailPage() {
   const [editCouts, setEditCouts] = useState(false);
   const [coutsForm, setCoutsForm] = useState({ prixAchat: '', dedouanement: '' });
   const [depensesLignes, setDepensesLignes] = useState<Array<{ id: string; libelle: string; montant: string }>>([]);
+  const [deletePaiementId, setDeletePaiementId] = useState<string | null>(null);
   const [paiementTrancheId, setPaiementTrancheId] = useState<string | null>(null);
   const [paiementForm, setPaiementForm] = useState({
     montant: '', modePaiement: 'Especes' as ModePaiement, date: new Date().toISOString().split('T')[0],
@@ -123,6 +124,43 @@ export default function FactureDetailPage() {
     setShowPaiement(false);
     setPaiementTrancheId(null);
     setPaiementForm({ montant: '', modePaiement: 'Especes', date: new Date().toISOString().split('T')[0] });
+  }
+
+  function handleDeletePaiement() {
+    if (!facture || !deletePaiementId) return;
+    const paiement = facture.paiements.find((p) => p.id === deletePaiementId);
+    if (!paiement) {
+      setDeletePaiementId(null);
+      return;
+    }
+
+    let updated: Facture = {
+      ...facture,
+      paiements: facture.paiements.filter((p) => p.id !== deletePaiementId),
+    };
+
+    if (paiement.trancheId) {
+      const today = new Date().toISOString().split('T')[0];
+      updated = {
+        ...updated,
+        tranches: updated.tranches.map((t) => {
+          if (t.id !== paiement.trancheId) return t;
+          const isOverdue = t.dateEcheance < today;
+          return {
+            ...t,
+            datePaiement: null,
+            modePaiement: null,
+            statut: (isOverdue ? 'En_retard' : 'En_attente') as StatutTranche,
+          };
+        }),
+      };
+    }
+
+    const final = recalculate(updated);
+    saveFacture(final);
+    setFacture(final);
+    setDeletePaiementId(null);
+    toast.success('Paiement supprimé');
   }
 
   if (!facture) return <FullPageSpinner />;
@@ -482,6 +520,14 @@ export default function FactureDetailPage() {
                     {p.dateCreation && <span className="ml-1 text-ink-dim">· Enregistré le {formatDateTime(p.dateCreation)}</span>}
                   </p>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => setDeletePaiementId(p.id)}
+                  className="rounded p-1.5 text-ink-dim hover:bg-red-50 hover:text-red-600"
+                  title="Supprimer le paiement"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
               </div>
             ))}
           </div>
@@ -508,6 +554,15 @@ export default function FactureDetailPage() {
         </div>
       )}
 
+      <ConfirmDialog
+        open={!!deletePaiementId}
+        title="Supprimer le paiement"
+        message="Êtes-vous sûr de vouloir supprimer ce paiement ? Cette action est irréversible."
+        confirmLabel="Supprimer"
+        danger
+        onConfirm={handleDeletePaiement}
+        onCancel={() => setDeletePaiementId(null)}
+      />
       <ConfirmDialog open={showDelete} title="Supprimer la facture" message={`Supprimer la facture ${facture.id} et tous ses paiements ? Cette action est irréversible.`} confirmLabel="Supprimer" danger onConfirm={() => { deleteFacture(id); toast.success('Facture supprimée'); router.push('/factures'); }} onCancel={() => setShowDelete(false)} />
     </div>
   );
