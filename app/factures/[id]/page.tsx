@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
-import { Trash2, FileDown, Printer, CreditCard, CheckCircle2, ArrowRight } from 'lucide-react';
+import { Trash2, FileDown, Printer, CreditCard, CheckCircle2, ArrowRight, Plus } from 'lucide-react';
 import { getFactureById, saveFacture, deleteFacture, getEntreprise, getDossierById } from '@/lib/store';
 import { generateFacturePDF } from '@/lib/pdf';
 import { exportTranchesToExcel } from '@/lib/excel';
@@ -29,6 +29,7 @@ export default function FactureDetailPage() {
   const [showPaiement, setShowPaiement] = useState(false);
   const [editCouts, setEditCouts] = useState(false);
   const [coutsForm, setCoutsForm] = useState({ prixAchat: '', dedouanement: '' });
+  const [depensesLignes, setDepensesLignes] = useState<Array<{ id: string; libelle: string; montant: string }>>([]);
   const [paiementTrancheId, setPaiementTrancheId] = useState<string | null>(null);
   const [paiementForm, setPaiementForm] = useState({
     montant: '', modePaiement: 'Especes' as ModePaiement, date: new Date().toISOString().split('T')[0],
@@ -40,6 +41,22 @@ export default function FactureDetailPage() {
     updateOverdueTranches(f);
     setFacture(f);
   }, [id, router]);
+
+  useEffect(() => {
+    if (!facture) return;
+    const existingLignes = (facture.depensesLignes && facture.depensesLignes.length > 0)
+      ? facture.depensesLignes
+      : ((facture.depenses ?? 0) > 0
+          ? [{ id: generateId(), libelle: 'Dépenses diverses', montant: facture.depenses }]
+          : []);
+    setDepensesLignes(
+      existingLignes.map((d) => ({
+        id: d.id || generateId(),
+        libelle: d.libelle || '',
+        montant: String(d.montant || 0),
+      })),
+    );
+  }, [facture]);
 
   function updateOverdueTranches(f: Facture) {
     const today = new Date().toISOString().split('T')[0];
@@ -116,8 +133,12 @@ export default function FactureDetailPage() {
     : 0;
   const dossier = getDossierById(facture.dossierId);
   const prixAchat = facture.prixAchat ?? 0;
-  const dedouanement = facture.dedouanement ?? facture.depenses ?? 0;
-  const benefice = calculerBenefice(facture.prixTotalTTC, prixAchat, dedouanement);
+  const dedouanement = facture.dedouanement ?? 0;
+  const autresDepenses = (facture.depensesLignes && facture.depensesLignes.length > 0)
+    ? facture.depensesLignes.reduce((sum, d) => sum + (d.montant || 0), 0)
+    : (facture.depenses ?? 0);
+  const depensesTotales = dedouanement + autresDepenses;
+  const benefice = calculerBenefice(facture.prixTotalTTC, prixAchat, depensesTotales);
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
@@ -169,8 +190,8 @@ export default function FactureDetailPage() {
             />
           </div>
         </div>
-        <div className="mt-4 flex flex-wrap items-end justify-between gap-4 border-t border-edge-soft pt-3">
-          <div className="flex flex-wrap gap-4">
+        <div className="mt-4 flex flex-col gap-4 border-t border-edge-soft pt-3">
+          <div className="flex flex-wrap items-end gap-4">
             {editCouts ? (
               <>
                 <div>
@@ -195,14 +216,109 @@ export default function FactureDetailPage() {
                     className="mt-1 w-28 rounded-lg px-2 py-1 text-sm ring-1 ring-edge-soft"
                   />
                 </div>
+                <div className="flex flex-col gap-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Dépenses</p>
+                  {depensesLignes.length === 0 && (
+                    <p className="text-xs text-ink-dim">Aucune dépense enregistrée.</p>
+                  )}
+                  {depensesLignes.map((depense) => (
+                    <div key={depense.id} className="mt-1 grid grid-cols-1 gap-2 sm:grid-cols-[1fr_160px_auto]">
+                      <FormInput
+                        name={`depense_libelle_${depense.id}`}
+                        label="Libellé"
+                        placeholder="Frais divers..."
+                        value={depense.libelle}
+                        onChange={(e) =>
+                          setDepensesLignes((prev) =>
+                            prev.map((d) => (d.id === depense.id ? { ...d, libelle: e.target.value } : d)),
+                          )
+                        }
+                      />
+                      <FormInput
+                        name={`depense_montant_${depense.id}`}
+                        label="Montant (FCFA)"
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={depense.montant}
+                        onChange={(e) =>
+                          setDepensesLignes((prev) =>
+                            prev.map((d) => (d.id === depense.id ? { ...d, montant: e.target.value } : d)),
+                          )
+                        }
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setDepensesLignes((prev) => prev.filter((d) => d.id !== depense.id))
+                        }
+                        className="mt-6 rounded p-2 text-ink-dim hover:bg-red-50 hover:text-red-600"
+                        title="Supprimer la dépense"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+                  <div className="mt-2 flex items-center justify-between rounded-lg bg-muted px-3 py-2 text-xs sm:text-sm">
+                    <span className="text-ink-secondary">
+                      Total autres dépenses:{' '}
+                      {formatMontant(
+                        depensesLignes.reduce(
+                          (sum, d) => sum + (parseFloat(d.montant) || 0),
+                          0,
+                        ),
+                      )}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setDepensesLignes((prev) => [
+                          ...prev,
+                          { id: generateId(), libelle: '', montant: '' },
+                        ])
+                      }
+                      className="inline-flex items-center gap-1 rounded-lg border border-dashed border-edge-soft px-2 py-1 text-xs text-ink-secondary hover:border-blue-300 hover:text-blue-600"
+                    >
+                      <Plus className="h-3.5 w-3.5" /> Ajouter
+                    </button>
+                  </div>
+                </div>
                 <div className="flex gap-2">
                   <Button size="sm" onClick={() => {
                     const pa = parseFloat(coutsForm.prixAchat) || 0;
                     const de = parseFloat(coutsForm.dedouanement) || 0;
-                    const updated = { ...facture, prixAchat: pa, dedouanement: de };
+                    const lignesNettoyees = depensesLignes
+                      .map((d) => ({
+                        ...d,
+                        libelle: d.libelle.trim(),
+                        montant: parseFloat(d.montant) || 0,
+                      }))
+                      .filter((d) => d.libelle || d.montant > 0);
+                    const totalDepensesAutres = lignesNettoyees.reduce(
+                      (sum, d) => sum + d.montant,
+                      0,
+                    );
+                    const updated = {
+                      ...facture,
+                      prixAchat: pa,
+                      dedouanement: de,
+                      depenses: totalDepensesAutres,
+                      depensesLignes: lignesNettoyees.map(({ id, libelle, montant }) => ({
+                        id,
+                        libelle,
+                        montant,
+                      })),
+                    };
                     saveFacture(updated);
                     setFacture(updated);
                     setEditCouts(false);
+                    setDepensesLignes(
+                      lignesNettoyees.map((d) => ({
+                        id: d.id,
+                        libelle: d.libelle,
+                        montant: String(d.montant),
+                      })),
+                    );
                     toast.success('Coûts mis à jour');
                   }}>Enregistrer</Button>
                   <Button variant="secondary" size="sm" onClick={() => { setEditCouts(false); setCoutsForm({ prixAchat: String(prixAchat), dedouanement: String(dedouanement) }); }}>Annuler</Button>
@@ -219,6 +335,12 @@ export default function FactureDetailPage() {
                   <p className="text-sm font-medium tabular-nums text-ink-secondary">{formatMontant(dedouanement)}</p>
                 </div>
                 <div>
+                  <span className="text-xs text-ink-muted">Autres dépenses</span>
+                  <p className="text-sm font-medium tabular-nums text-ink-secondary">
+                    {formatMontant(autresDepenses)}
+                  </p>
+                </div>
+                <div>
                   <span className="text-xs text-ink-muted">Bénéfice</span>
                   <p className={`text-sm font-semibold tabular-nums ${benefice >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                     {formatMontant(benefice)}
@@ -228,6 +350,21 @@ export default function FactureDetailPage() {
               </>
             )}
           </div>
+          <div className="mt-2 text-xs text-ink-muted">
+            Bénéfice = Prix de vente ({formatMontant(facture.prixTotalTTC)}) - Prix d&apos;achat ({formatMontant(prixAchat)}) - Dédouanement ({formatMontant(dedouanement)}){autresDepenses > 0 && <> - Autres dépenses ({formatMontant(autresDepenses)})</>} = {formatMontant(benefice)}
+          </div>
+          {facture.depensesLignes && facture.depensesLignes.length > 0 && (
+            <div className="mt-3 rounded-lg bg-muted p-3">
+              <p className="text-xs font-medium uppercase text-ink-muted">Détails des dépenses</p>
+              <div className="mt-2 space-y-1">
+                {facture.depensesLignes.map((d) => (
+                  <p key={d.id} className="text-sm text-ink-secondary">
+                    {d.libelle || 'Dépense'}: {formatMontant(d.montant || 0)}
+                  </p>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
         <p className="mt-4 border-t border-edge-soft pt-3 text-xs text-ink-dim">
           M = Million, Md = Milliard (1 000 millions). Devise : FCFA.

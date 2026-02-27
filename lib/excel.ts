@@ -162,8 +162,9 @@ export function exportLocationsToExcel(locations: Location[], filename: string =
 export function exportFacturesToExcel(factures: Facture[], filename: string = 'factures.xlsx'): void {
   const data = factures.map((f) => {
     const prixAchat = f.prixAchat ?? 0;
-    const dedouanement = f.dedouanement ?? f.depenses ?? 0;
-    const benefice = calculerBenefice(f.prixTotalTTC, prixAchat, dedouanement);
+    const dedouanement = f.dedouanement ?? 0;
+    const autresDepenses = f.depensesLignes?.reduce((sum, d) => sum + (d.montant || 0), 0) ?? f.depenses ?? 0;
+    const benefice = calculerBenefice(f.prixTotalTTC, prixAchat, dedouanement + autresDepenses);
     const c = getClientDisplayFromFacture(f);
     return {
       'N° Facture': f.id,
@@ -269,8 +270,9 @@ export function exportFullReport(dossiers: Dossier[], factures: Facture[], locat
 
   const factureData = factures.map((f) => {
     const prixAchat = f.prixAchat ?? 0;
-    const dedouanement = f.dedouanement ?? f.depenses ?? 0;
-    const benefice = calculerBenefice(f.prixTotalTTC, prixAchat, dedouanement);
+    const dedouanement = f.dedouanement ?? 0;
+    const autresDepenses = f.depensesLignes?.reduce((sum, d) => sum + (d.montant || 0), 0) ?? f.depenses ?? 0;
+    const benefice = calculerBenefice(f.prixTotalTTC, prixAchat, dedouanement + autresDepenses);
     return {
       'N° Facture': f.id,
       'Client': formatClientLabel(getClientDisplayFromFacture(f)),
@@ -299,7 +301,13 @@ export function exportFullReport(dossiers: Dossier[], factures: Facture[], locat
 
   const totalVentes = factures.reduce((s, f) => s + f.prixTotalTTC, 0);
   const totalEncaisse = factures.reduce((s, f) => s + f.montantPaye, 0);
-  const totalBenefice = factures.reduce((s, f) => s + calculerBenefice(f.prixTotalTTC, f.prixAchat ?? 0, f.dedouanement ?? f.depenses ?? 0), 0);
+  const totalBenefice = factures.reduce((s, f) => {
+    const prixAchat = f.prixAchat ?? 0;
+    const dedouanement = f.dedouanement ?? 0;
+    const autresDepenses = f.depensesLignes?.reduce((sum, d) => sum + (d.montant || 0), 0) ?? f.depenses ?? 0;
+    const depensesTotales = dedouanement + autresDepenses;
+    return s + calculerBenefice(f.prixTotalTTC, prixAchat, depensesTotales);
+  }, 0);
   const summaryData = [
     { 'Indicateur': 'Total dossiers', 'Valeur': dossiers.length },
     { 'Indicateur': 'Total factures', 'Valeur': factures.length },

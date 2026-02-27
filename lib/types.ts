@@ -112,9 +112,17 @@ export interface Facture {
   dateFacture: string;
   prixTotalTTC: number;
   prixAchat?: number;
-  /** @deprecated Utiliser dedouanement. Conservé pour rétrocompatibilité. */
-  depenses?: number;
   dedouanement?: number;
+  /**
+   * Dépenses diverses supplémentaires (hors dédouanement).
+   * Pour compatibilité, peut contenir un total agrégé si `depensesLignes` n'est pas rempli.
+   */
+  depenses?: number;
+  depensesLignes?: Array<{
+    id: string;
+    libelle: string;
+    montant: number;
+  }>;
   montantPaye: number;
   montantRestant: number;
   modePaiement: ModePaiement;
@@ -167,6 +175,7 @@ export interface EntrepriseInfo {
 
 export interface DashboardStats {
   totalDossiers: number;
+  totalFactures: number;
   parStatut: Record<StatutDossier, number>;
   totalVentes: number;
   totalEncaisse: number;

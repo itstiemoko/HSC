@@ -50,6 +50,12 @@ export default function DashboardPage() {
           color="blue"
         />
         <StatsCard
+          title="Total Factures"
+          value={stats.totalFactures}
+          icon={<FileText className="h-6 w-6" />}
+          color="indigo"
+        />
+        <StatsCard
           title="Total Ventes"
           value={formatMontant(stats.totalVentes)}
           icon={<TrendingUp className="h-6 w-6" />}

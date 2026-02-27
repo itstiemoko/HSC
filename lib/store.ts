@@ -290,6 +290,7 @@ export function getDashboardStats(): DashboardStats {
 
   return {
     totalDossiers: dossiers.length,
+    totalFactures: factures.length,
     parStatut,
     totalVentes,
     totalEncaisse,
